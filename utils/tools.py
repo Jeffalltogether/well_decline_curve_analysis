@@ -5,7 +5,6 @@ def load_merge_header_and_production_csv(headerCSV, productionCSV):
 	import datetime
 	# load header data
 	headerDF = pd.read_csv(headerCSV, dtype={'API/UWI': 'O'})
-	headerDF['API/UWI'] = headerDF['API/UWI'].astype(object)
 
 	# load time-series data
 	timeSeriesDF = pd.read_csv(productionCSV, dtype={'API/UWI': 'O'})
@@ -15,7 +14,6 @@ def load_merge_header_and_production_csv(headerCSV, productionCSV):
 
 	# convert production date to dtype date time and API to string
 	timeSeriesDF['Production Date'] = pd.to_datetime(timeSeriesDF['Production Date'])
-	timeSeriesDF['API/UWI'] = timeSeriesDF['API/UWI'].astype(object)
 
 	# merge header data and timeseries data
 	wellDF = pd.merge(timeSeriesDF, headerDF, on='API/UWI', how = 'right')
@@ -56,16 +54,6 @@ def current_selection(dataFrame):
 
 	print '%i wells selected' %(len(allWells))
 	return
-
-def decline_curve(t, qi, b, di):
-	# unit of t is in days
-	print qi, b, di
-	return qi*(1.0 - b*(di)*t)**(-1.0 / b)
-
-def decline_curve_for_fitting(startParams, t, y):
-	# unit of t is in days
-	q = startParams
-	return q[0]*(1.0 - q[1]*(q[2])*t)**(-1.0 / q[1]) - y
 
 def handle_numerical_variables(dataFrame, colName):
 	# describe the data to the user
@@ -222,6 +210,50 @@ def handle_dateTime_variables(dataFrame, colName):
 
 	return dataFrame
 
+def handle_object_variables(dataFrame, colName):
+	# describe the data to the user
+	print '\nThe reamining wells in your selection have the following detailes for the column \"%s\" \n(note: mising data is excluded): ' %(colName)
+	print dataFrame[colName].dropna().describe()
+	print 'All unique values for this variable, \"%s\", are listed below: \n' %(colName)
+	uniqueValues = dataFrame[colName].dropna().unique()
+	print uniqueValues
+
+	# provide subsetting options to user and get their desired option
+	print '\nYou have the following options for this variable \"%s\":' %colName
+	print '\n  1 -- inclue your selection \n  2 -- exclude your selection'
+	selection = raw_input('\nSelect how you would like to subset the data based on the variable \"%s\":' %colName)
+
+	# check user input
+	while selection not in ('1', '2'):
+		selection = raw_input('please select 1 or 2: ')
+
+	# execute subsetting request 
+	# Include
+	if selection == '1':
+		criteria = raw_input('\nInput all levels of the variable \"%s\" that you would like to INCLUDE (separated by commas; names are case sensitive; do not include quotations): ' %colName)
+		criteria = [x.strip() for x in criteria.split(',')]
+		while set(criteria).issubset(uniqueValues) != True:
+			print 'Check spelling and case'
+			criteria = raw_input('\nInput all levels of the variable \"%s\" that you would like to INCLUDE (separated by commas; names are case sensitive; do not include quotations): ' %colName)
+			criteria = [x.strip() for x in criteria.split(',')]
+
+		# subset wells			
+		dataFrame = dataFrame[dataFrame[colName].isin(criteria)]
+
+	# Exclude
+	if selection == '2':
+		criteria = raw_input('\nInput all levels of the variable \"%s\" that you would like to EXCLUDE (separated by commas; names are case sensitive; do not include quotations): ' %colName)
+		criteria = [x.strip() for x in criteria.split(',')]
+		while set(criteria).issubset(uniqueValues) != True:
+			print 'Check spelling and case'
+			criteria = raw_input('\nInput all levels of the variable \"%s\" that you would like to EXCLUDE (separated by commas; names are case sensitive; do not include quotations): ' %colName)
+			criteria = [x.strip() for x in criteria.split(',')]
+
+		# subset wells			
+		dataFrame = dataFrame[~dataFrame[colName].isin(criteria)] #`~` specifies 'not in'
+
+	return dataFrame
+
 def plot_map(latLongDF, userLocation = None):
 	# https://peak5390.wordpress.com/2012/12/08/matplotlib-basemap-tutorial-plotting-points-on-a-simple-map/
 	# https://stackoverflow.com/questions/23751635/good-python-toolkit-for-plotting-points-on-a-city-map
@@ -275,10 +307,62 @@ def plot_map(latLongDF, userLocation = None):
 
 	return
 
+def decline_curve(t, qi, b, di):
+	# unit of t is in days
+	return qi*(1.0-b*di*t)**(-1.0/b)
+
+def decline_curve_residuals(startParams, t, y):
+	# unit of t is in days
+	q = startParams
+	return q[0]*(1.0 - q[1]*(q[2])*t)**(-1.0 / q[1])
+
+def gradient_descent(t, y, startParams, epochs = 100, learningRate = 0.01):
+	import numpy as np
+	# mean_t = np.mean(t)
+	# mean_y = np.mean(y)
+	# t = t - mean_t
+	# y = y - mean_y
+	t = np.array(t, dtype = np.complex128)
+	y = np.array(y, dtype = np.complex128)
+
+	qi, b, di = startParams[0], startParams[1], startParams[2]
+	for epoch in range(epochs):
+		# Compute predictions with parameters
+		print qi
+		print b
+		print di
+
+		y_pred = decline_curve(t, qi, b, di)
+
+		# compute error
+		SSE = 0.5* np.sum(y - y_pred)**2
+		print 'error based on parameters %.0f, %.4f, %.4f = %.4f' %(qi, b, di, SSE)
+		# Calculate gradients
+		dSSE_dqi = np.sum(-1.0*(-qi*(-b*di*y + 1.0)**(-1.0/b) + t)*(-b*di*y + 1.0)**(-1.0/b))
+
+		dSSE_db = np.sum(-1.0*qi*(-qi*(-b*di*y + 1.0)**(-1.0/b) + t)*(-b*di*y + 1.0)**(-1.0/b)*(1.0*di*y/(b*(-b*di*y + 1.0)) + 1.0*np.log10(-b*di*y + 1.0)/b**2))
+
+		dSSE_ddi = np.sum(-1.0*qi*y*(-qi*(-b*di*y + 1.0)**(-1.0/b) + t)*(-b*di*y + 1.0)**(-1.0/b)/(-b*di*y + 1.0))
+		
+		# update parameters
+		print dSSE_dqi
+		print dSSE_db
+		print dSSE_ddi
+
+		qi = qi - learningRate * np.real(dSSE_dqi)
+		b = b - learningRate * np.real(dSSE_db)
+		di = di - learningRate * np.real(dSSE_ddi)
+
+
+	return qi, b, di
+
+
 def fit_decline_curve(wellDF):
 	import numpy as np
 	from scipy.optimize import least_squares
 	from sklearn.metrics import r2_score
+	import statsmodels.api as sm
+	from decline import DeclineObj
 
 	# select only the decline portion of the well's production for analysis
 	declineData = wellDF[wellDF['Time Delta'] >= '0 days']
@@ -290,27 +374,76 @@ def fit_decline_curve(wellDF):
 
 	#start params
 	print 'fitting decline curve parameters'
-	startParams = np.array([10000, 1.08, -0.04])
-	res_soft_l1 = least_squares(decline_curve_for_fitting, startParams, loss='soft_l1', f_scale=0.01,
-	                             args=(x_train, y_train), verbose=2)
+	
+	startParams = np.array([5000.0, 0.1, 0.04]) #[qi, b, di]
+	
+	# try:
+	# 	res_soft_l1 = least_squares(decline_curve_residuals, startParams, 
+	# 								bounds = ([0,np.inf], [0,np.inf], [0.001, 10]),
+	# 								loss='soft_l1', f_scale=0.1, args=(x_train, y_train))
 
-	# display results to user
-	print 'solution found:'
-	print '\nqi = %.2f, b = %.4f, di = %.4f' %(res_soft_l1.x[0], res_soft_l1.x[1], res_soft_l1.x[2])
+	# 	coefficient_of_dermination = r2_score(y_train, decline_curve(x_train, *res_soft_l1.x))
+	# except ValueError:
+	# 	print '\ncould not converge, attempting to re-try after smoothing data.\n'
+
+	# eliminate outliners from curves to fix convergence issues
+	smooth_t = []
+	smooth_y = []
+	for API in set(declineData['API/UWI']):
+		# Eliminate data that is below 3 standard deviations of the mean
+		stdev = np.std(declineData.loc[(declineData['API/UWI'] == API), 'Liquid (bbl)'])
+		mean = np.std(declineData.loc[(declineData['API/UWI'] == API), 'Liquid (bbl)'])
+		goodData = declineData.loc[((declineData['API/UWI'] == API) & (declineData['Liquid (bbl)'] >= mean - 3.0*stdev))]
+		
+		# get decline data for individual well
+		y_train = np.array(goodData['Liquid (bbl)'])
+		t_train = np.array(goodData['Time Delta'].dt.days)
+		smooth_t.append(t_train)
+		smooth_y.append(y_train)			
+		# #smooth decline cruve
+		# smooth_train.append(sm.nonparametric.lowess(smooth_Decline, t_data, frac=0.05))
+
+
+	# flatten list
+	smooth_t = np.array([j for i in smooth_t for j in i])
+	smooth_y = np.array([j for i in smooth_y for j in i])
+
+	# sort from smallest times to largest times
+	smooth = zip(smooth_t, smooth_y)
+	smooth = sorted(smooth)
+
+	# separate into x and y
+	x = np.array([t for t,y in smooth])
+	y = np.array([y for t,y in smooth])
+
+	# compute decline curve
+	model = DeclineObj(x,y,[y.max(),3.5,-0.75], model="HYP")
+	results = model(limits=[(0,y.max()*10.0),(1.0,4.0),(-0.99,-0.001)])
+	qi, b, di = model.parameters
+	
+	# qi, b, di = gradient_descent(x, y, [y.max(),3.5,-0.75])
+	# res_soft_l1 = least_squares(decline_curve_residuals, startParams, loss='soft_l1', f_scale=0.01,
+	# 							args=(smooth_t, smooth_y), verbose=2)
+
+	# compute goodness-of-fit parameter
+	coefficient_of_dermination = r2_score(smooth_y, decline_curve(smooth_t, qi, b, di))
+
+	# # display results to user
+	# print 'solution found:'
+	# print '\nqi = %.2f, b = %.4f, di = %.4f' %(res_soft_l1.x[0], res_soft_l1.x[1], res_soft_l1.x[2])
 
 	# display accuracy of fit to user
-	coefficient_of_dermination = r2_score(y_train, decline_curve(x_train, *res_soft_l1.x))
 	print '\nR2 value of the fit is %.2f \n' %coefficient_of_dermination
-	print 'R-squared is a statistical measure of how close the data are to the fitted regression line. \n\
-	It is also known as the coefficient of determination, or the coefficient of multiple determination for multiple regression\n\
-	It is the percentage of the response variable variation that is explained by a linear model\n\
-	R-squared = Explained variation / Total variation\n\
-	R-squared is always between 0 and 100%:\n\
+	print '	R-squared is a statistical measure of how close the data are to the fitted regression line. \n\
+	It is also known as the coefficient of determination, or the coefficient of multiple determination for multiple regression.\n\
+	It is the percentage of the response variable variation that is explained by a linear model.\n\
+		R-squared = Explained variation / Total variation\n\
+		R-squared is always between 0 and 100%:\n\
 	0.0 indicates that the model explains none of the variability of the response data around its mean.\n\
 	1.00 indicates that the model explains all the variability of the response data around its mean.\n\
-	In general, the higher the R-squared, the better the model fits your data.'
-	print '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'	
+	In general, the higher the R-squared, the better the model fits your data.\n\n\
+	If your R-squared value is low it can mean your selected wells have very different decline curve trends,\n\
+	or that your selected wells have an unusual decline curve shape.'
 
 	# return solution
-	qi, b, di = res_soft_l1.x
 	return qi, b, di, coefficient_of_dermination

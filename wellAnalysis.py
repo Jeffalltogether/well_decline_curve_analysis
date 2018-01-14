@@ -2,20 +2,17 @@
 
 ### Boiler-plate imports and code
 import sys
-sys.path.append('C:/Users/JeffPC2/Documents/Sync/PythonScripts/forJessica/utils/')
+sys.path.append('./utils/')
 import os 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
-import pylab
 from geopy.distance import vincenty
-# import python module for type curve analysis
-from decline import DeclineObj
 
 # import tools and custom code
 from tools import load_merge_header_and_production_csv, swap_production_dates_for_time_delta, current_selection, decline_curve
-from tools import handle_numerical_variables, handle_dateTime_variables, plot_map, decline_curve_for_fitting, fit_decline_curve
+from tools import handle_numerical_variables, handle_dateTime_variables, handle_object_variables, plot_map, decline_curve_residuals, fit_decline_curve
 # set plot text size
 matplotlib.rcParams.update({'font.size': 12})
 
@@ -123,7 +120,7 @@ class Quick_TypeCurve_Analysis(object):
 				self.wellDF = handle_numerical_variables(self.wellDF, colName)
 
 			elif str(self.wellDF[colName].dtypes) in ['object']:
-				print 'I do not know how to handle objects yet'
+				self.wellDF = handle_object_variables(self.wellDF, colName)
 
 			elif str(self.wellDF[colName].dtypes) in ['datetime64', 'timedelta[ns]','datetime64[ns]']:
 				self.wellDF = handle_dateTime_variables(self.wellDF, colName)
@@ -222,6 +219,8 @@ class Quick_TypeCurve_Analysis(object):
 			plot_map(self.wellDF, self.userLocation)
 
 	def save_selected_data(self):
+		print '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
+		print 'saving selected wells to .csv'		
 		# # select by well number
 		# wellByName = raw_input ('would you like to save the sorted data as a CSV? [y/n]: ')
 		# # check user input
@@ -236,10 +235,20 @@ class Quick_TypeCurve_Analysis(object):
 
 if __name__ == '__main__':
 	### well data files
-	headerCSV = 'C:/Users/JeffPC2/Documents/Sync/PythonScripts/forJessica/data/Well_header_data.csv'
-	productionCSV = 'C:/Users/JeffPC2/Documents/Sync/PythonScripts/forJessica/data/Production_Time_Series.CSV'
+	headerCSV = './data/Well_header_data.csv'
+	productionCSV = './data/Production_Time_Series.CSV'
 
 	analysis = Quick_TypeCurve_Analysis(headerCSV, productionCSV)
+
+	# select by well number
+	wellByName = raw_input ('would you like to select individual wells by API-UWI number? [y/n]: ')
+	# check user input
+	while wellByName not in ('y', 'n', 'Y', 'N'):
+		wellByName = raw_input('please try again [y/n]?  ')
+
+	if wellByName == 'y' or wellByName == 'Y':
+		analysis.subset_by_well_name()
+
 
 	# select nearby wells with a circular radius
 	wellByName = raw_input ('would you like to select wells near a GPS location? [y/n]: ')
@@ -251,35 +260,27 @@ if __name__ == '__main__':
 		analysis.subset_wells_by_distance()
 
 
-	# # select by well number
-	# wellByName = raw_input ('would you like to select individual wells by API-UWI number? [y/n]: ')
-	# # check user input
-	# while wellByName not in ('y', 'n', 'Y', 'N'):
-	# 	wellByName = raw_input('please try again [y/n]?  ')
+	# select by variable ranges
+	wellByVariable = raw_input ('would you like to subset wells by column values? [y/n]: ')
+	# check user input
+	while wellByVariable not in ('y', 'n', 'Y', 'N'):
+		wellByVariable = raw_input('please try again [y/n]?  ')
 
-	# if wellByName == 'y' or wellByName == 'Y':
-	# 	analysis.subset_by_well_name()
+	if wellByVariable == 'y' or wellByVariable == 'Y':
+		analysis.subset_well_by_variable()
 
-
-	# # select by variable ranges
-	# wellByVariable = raw_input ('would you like to subset wells by column values? [y/n]: ')
-	# # check user input
-	# while wellByVariable not in ('y', 'n', 'Y', 'N'):
-	# 	wellByVariable = raw_input('please try again [y/n]?  ')
-
-	# if wellByVariable == 'y' or wellByVariable == 'Y':
-	# 	analysis.subset_well_by_variable()
 
 	# plot raw decline curves
 	# analysis.plot_decline_curves()
 
+
 	# plot type curve and raw decline curves
 	analysis.generate_type_curve()
 
-	# # plot map
-	# analysis.map_selected_wells()
 
-	# # save csv
-	# analysis.save_selected_data()	
+	# plot map
+	analysis.map_selected_wells()
 
-	# analysis.fit_decline_curve()
+
+	# save csv
+	analysis.save_selected_data()	
