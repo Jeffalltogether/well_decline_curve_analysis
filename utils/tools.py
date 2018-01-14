@@ -359,9 +359,9 @@ def gradient_descent(t, y, startParams, epochs = 100, learningRate = 0.01):
 
 def fit_decline_curve(wellDF):
 	import numpy as np
-	from scipy.optimize import least_squares
+	# from scipy.optimize import least_squares
 	from sklearn.metrics import r2_score
-	import statsmodels.api as sm
+	# import statsmodels.api as sm
 	from decline import DeclineObj
 
 	# select only the decline portion of the well's production for analysis
