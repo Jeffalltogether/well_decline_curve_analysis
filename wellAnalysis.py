@@ -13,6 +13,7 @@ from geopy.distance import vincenty
 # import tools and custom code
 from tools import load_merge_header_and_production_csv, swap_production_dates_for_time_delta, current_selection, decline_curve
 from tools import handle_numerical_variables, handle_dateTime_variables, handle_object_variables, plot_map, decline_curve_residuals, fit_decline_curve
+
 # set plot text size
 matplotlib.rcParams.update({'font.size': 12})
 
@@ -221,14 +222,6 @@ class Quick_TypeCurve_Analysis(object):
 	def save_selected_data(self):
 		print '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
 		print 'saving selected wells to .csv'		
-		# # select by well number
-		# wellByName = raw_input ('would you like to save the sorted data as a CSV? [y/n]: ')
-		# # check user input
-		# while wellByName not in ('y', 'n', 'Y', 'N'):
-		# 	wellByName = raw_input('please try again [y/n]?  ')
-		# # save wells
-		# if wellByName == 'y' or wellByName == 'Y':
-		# 	self.wellDF.to_csv('./results/selected_wells.csv')
 		self.wellDF.to_csv('./results/selected_wells.csv')
 
 

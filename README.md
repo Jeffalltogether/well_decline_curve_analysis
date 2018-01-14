@@ -10,11 +10,17 @@
 *geopy  
 *mpl_toolkits.basemap  
   
-## Select wells based on critieria available in well data  
+## 0.0 Provide .csv of Well production data and .csv of well header data
+Examples in `./data` 
+
+## 1.0 Select wells based on critieria available in well data  
+Follow the prompts after starting program  
   
-## Compute type curve  
+## 2.0 Compute type curve  
+Based on https://www.uky.edu/KGS/emsweb/devsh/production/decline_obj.py  
   
-## plot type curve  
-  
-## Plot map of wells used in type curve  
-  
+## 3.0 plot type curve  
+Results are saved to `./results`  
+
+## 4.0 Plot map of wells used in type curve  
+Results are saved to `./results`  

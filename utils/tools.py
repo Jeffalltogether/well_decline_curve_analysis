@@ -293,7 +293,7 @@ def plot_map(latLongDF, userLocation = None):
 	# add wells to map
 	for lab,lat,lon,prod in zip(labels, latitudes, longitudes, production):
 		x,y = map(lon, lat)
-		map.plot(x, y, 'bo', markersize=prod, alpha=.5)
+		map.plot(x, y, 'bo', markersize=prod, alpha=.75)
 
 	if userLocation:
 		x,y = map(userLocation[1], userLocation[0])
@@ -311,57 +311,9 @@ def decline_curve(t, qi, b, di):
 	# unit of t is in days
 	return qi*(1.0-b*di*t)**(-1.0/b)
 
-def decline_curve_residuals(startParams, t, y):
-	# unit of t is in days
-	q = startParams
-	return q[0]*(1.0 - q[1]*(q[2])*t)**(-1.0 / q[1])
-
-def gradient_descent(t, y, startParams, epochs = 100, learningRate = 0.01):
-	import numpy as np
-	# mean_t = np.mean(t)
-	# mean_y = np.mean(y)
-	# t = t - mean_t
-	# y = y - mean_y
-	t = np.array(t, dtype = np.complex128)
-	y = np.array(y, dtype = np.complex128)
-
-	qi, b, di = startParams[0], startParams[1], startParams[2]
-	for epoch in range(epochs):
-		# Compute predictions with parameters
-		print qi
-		print b
-		print di
-
-		y_pred = decline_curve(t, qi, b, di)
-
-		# compute error
-		SSE = 0.5* np.sum(y - y_pred)**2
-		print 'error based on parameters %.0f, %.4f, %.4f = %.4f' %(qi, b, di, SSE)
-		# Calculate gradients
-		dSSE_dqi = np.sum(-1.0*(-qi*(-b*di*y + 1.0)**(-1.0/b) + t)*(-b*di*y + 1.0)**(-1.0/b))
-
-		dSSE_db = np.sum(-1.0*qi*(-qi*(-b*di*y + 1.0)**(-1.0/b) + t)*(-b*di*y + 1.0)**(-1.0/b)*(1.0*di*y/(b*(-b*di*y + 1.0)) + 1.0*np.log10(-b*di*y + 1.0)/b**2))
-
-		dSSE_ddi = np.sum(-1.0*qi*y*(-qi*(-b*di*y + 1.0)**(-1.0/b) + t)*(-b*di*y + 1.0)**(-1.0/b)/(-b*di*y + 1.0))
-		
-		# update parameters
-		print dSSE_dqi
-		print dSSE_db
-		print dSSE_ddi
-
-		qi = qi - learningRate * np.real(dSSE_dqi)
-		b = b - learningRate * np.real(dSSE_db)
-		di = di - learningRate * np.real(dSSE_ddi)
-
-
-	return qi, b, di
-
-
 def fit_decline_curve(wellDF):
 	import numpy as np
-	# from scipy.optimize import least_squares
 	from sklearn.metrics import r2_score
-	# import statsmodels.api as sm
 	from decline import DeclineObj
 
 	# select only the decline portion of the well's production for analysis
@@ -376,15 +328,6 @@ def fit_decline_curve(wellDF):
 	print 'fitting decline curve parameters'
 	
 	startParams = np.array([5000.0, 0.1, 0.04]) #[qi, b, di]
-	
-	# try:
-	# 	res_soft_l1 = least_squares(decline_curve_residuals, startParams, 
-	# 								bounds = ([0,np.inf], [0,np.inf], [0.001, 10]),
-	# 								loss='soft_l1', f_scale=0.1, args=(x_train, y_train))
-
-	# 	coefficient_of_dermination = r2_score(y_train, decline_curve(x_train, *res_soft_l1.x))
-	# except ValueError:
-	# 	print '\ncould not converge, attempting to re-try after smoothing data.\n'
 
 	# eliminate outliners from curves to fix convergence issues
 	smooth_t = []
@@ -398,11 +341,10 @@ def fit_decline_curve(wellDF):
 		# get decline data for individual well
 		y_train = np.array(goodData['Liquid (bbl)'])
 		t_train = np.array(goodData['Time Delta'].dt.days)
+
+		# append to lists
 		smooth_t.append(t_train)
 		smooth_y.append(y_train)			
-		# #smooth decline cruve
-		# smooth_train.append(sm.nonparametric.lowess(smooth_Decline, t_data, frac=0.05))
-
 
 	# flatten list
 	smooth_t = np.array([j for i in smooth_t for j in i])
@@ -421,16 +363,8 @@ def fit_decline_curve(wellDF):
 	results = model(limits=[(0,y.max()*10.0),(1.0,4.0),(-0.99,-0.001)])
 	qi, b, di = model.parameters
 	
-	# qi, b, di = gradient_descent(x, y, [y.max(),3.5,-0.75])
-	# res_soft_l1 = least_squares(decline_curve_residuals, startParams, loss='soft_l1', f_scale=0.01,
-	# 							args=(smooth_t, smooth_y), verbose=2)
-
 	# compute goodness-of-fit parameter
 	coefficient_of_dermination = r2_score(smooth_y, decline_curve(smooth_t, qi, b, di))
-
-	# # display results to user
-	# print 'solution found:'
-	# print '\nqi = %.2f, b = %.4f, di = %.4f' %(res_soft_l1.x[0], res_soft_l1.x[1], res_soft_l1.x[2])
 
 	# display accuracy of fit to user
 	print '\nR2 value of the fit is %.2f \n' %coefficient_of_dermination
