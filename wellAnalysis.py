@@ -12,7 +12,7 @@ from geopy.distance import vincenty
 
 # import tools and custom code
 from tools import load_merge_header_and_production_csv, swap_production_dates_for_time_delta, current_selection, decline_curve
-from tools import handle_numerical_variables, handle_dateTime_variables, handle_object_variables, plot_map, decline_curve_residuals, fit_decline_curve
+from tools import handle_numerical_variables, handle_dateTime_variables, handle_object_variables, plot_map, fit_decline_curve
 
 # set plot text size
 matplotlib.rcParams.update({'font.size': 12})

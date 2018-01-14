@@ -293,11 +293,11 @@ def plot_map(latLongDF, userLocation = None):
 	# add wells to map
 	for lab,lat,lon,prod in zip(labels, latitudes, longitudes, production):
 		x,y = map(lon, lat)
-		map.plot(x, y, 'bo', markersize=prod, alpha=.75)
+		map.plot(x, y, 'bo', markersize=prod, alpha=0.75)
 
 	if userLocation:
 		x,y = map(userLocation[1], userLocation[0])
-		map.plot(x, y, 'go', markersize=25, alpha=.75)
+		map.plot(x, y, 'go', markersize=25, alpha=0.75)
 
 	# eliminate unnecessary white space
 	plt.tight_layout()
