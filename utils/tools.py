@@ -13,6 +13,7 @@ def load_merge_header_and_production_csv(headerCSV, productionCSV):
 	timeSeriesDF = timeSeriesDF.drop(['Entity ID', 'API/UWI List', 'Days'], axis = 1)
 
 	# convert production date to dtype date time and API to string
+	#################### loop through all columns with the word "date" and convert to datetime #######################
 	timeSeriesDF['Production Date'] = pd.to_datetime(timeSeriesDF['Production Date'])
 
 	# merge header data and timeseries data
