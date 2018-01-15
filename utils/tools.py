@@ -6,6 +6,19 @@ def load_merge_header_and_production_csv(headerCSV, productionCSV):
 	# load header data
 	headerDF = pd.read_csv(headerCSV, dtype={'API/UWI': 'O'})
 
+	# convert all date column to datetime
+	for column in headerDF.columns.values:
+		if 'date' in column:
+				headerDF[column] = pd.to_datetime(headerDF[column])
+
+	# force certain columns to be float
+	floatColumns = ['BE Oil EUR', 'BE Oil EUR NORM 10kft', 'BE Oil Delta EUR', 'BE Oil Delta EUR Percent', 'BE Gas EUR',
+					'BE Oil GAS NORM 10kft', 'BE Gas Delta EUR', 'BE Gas Delta EUR Percent', 'BE B-Factor', 'BE Initial Rate',
+					'BE Final Rate', 'BE Initial Decline', 'BE Oil RRR', 'BE Gas RRR', 'Perforated Interval Length']
+
+	for column in headerDF.columns.values:
+		if column in floatColumns:
+				headerDF[column] = pd.to_numeric(headerDF[column], errors = 'coerce')
 	# load time-series data
 	timeSeriesDF = pd.read_csv(productionCSV, dtype={'API/UWI': 'O'})
 
@@ -23,6 +36,10 @@ def load_merge_header_and_production_csv(headerCSV, productionCSV):
 
 	print '%i wells available' %(len(set(wellDF['API/UWI'])))
 
+	return wellDF
+
+def add_BOE_per_day_column(wellDF):
+	wellDF['BOE per day'] = ( (wellDF['Liquid (bbl)']+(wellDF['Gas (mcf)']/6.0) ) / wellDF['Perforated Interval Length']) * 10000 * (1/30.4)
 	return wellDF
 
 def swap_production_dates_for_time_delta(wellDF):
@@ -294,11 +311,13 @@ def plot_map(latLongDF, userLocation = None):
 	# add wells to map
 	for lab,lat,lon,prod in zip(labels, latitudes, longitudes, production):
 		x,y = map(lon, lat)
-		map.plot(x, y, 'bo', markersize=prod, alpha=0.75)
+		map.plot(x, y, 'bo', mfc='none', markersize=prod)
+		map.plot(x, y, 'bx', markersize=5)
 
 	if userLocation:
 		x,y = map(userLocation[1], userLocation[0])
-		map.plot(x, y, 'go', markersize=25, alpha=0.75)
+		map.plot(x, y, 'ro', markersize=20, alpha=0.75)
+		map.plot(x, y, 'x', markersize=10)
 
 	# eliminate unnecessary white space
 	plt.tight_layout()
@@ -323,7 +342,7 @@ def fit_decline_curve(wellDF):
 
 	days = declineData['Time Delta'].dt.days
 	x_train = np.array(days)
-	y_train = np.array(declineData['Liquid (bbl)'])
+	y_train = np.array(declineData['BOE per day'])
 
 	#start params
 	print 'fitting decline curve parameters'
@@ -335,12 +354,12 @@ def fit_decline_curve(wellDF):
 	smooth_y = []
 	for API in set(declineData['API/UWI']):
 		# Eliminate data that is below 3 standard deviations of the mean
-		stdev = np.std(declineData.loc[(declineData['API/UWI'] == API), 'Liquid (bbl)'])
-		mean = np.std(declineData.loc[(declineData['API/UWI'] == API), 'Liquid (bbl)'])
-		goodData = declineData.loc[((declineData['API/UWI'] == API) & (declineData['Liquid (bbl)'] >= mean - 3.0*stdev))]
+		stdev = np.std(declineData.loc[(declineData['API/UWI'] == API), 'BOE per day'])
+		mean = np.std(declineData.loc[(declineData['API/UWI'] == API), 'BOE per day'])
+		goodData = declineData.loc[((declineData['API/UWI'] == API) & (declineData['BOE per day'] >= mean - 3.0*stdev))]
 		
 		# get decline data for individual well
-		y_train = np.array(goodData['Liquid (bbl)'])
+		y_train = np.array(goodData['BOE per day'])
 		t_train = np.array(goodData['Time Delta'].dt.days)
 
 		# append to lists

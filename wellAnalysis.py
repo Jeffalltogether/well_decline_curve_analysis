@@ -11,8 +11,9 @@ import matplotlib
 from geopy.distance import vincenty
 
 # import tools and custom code
-from tools import load_merge_header_and_production_csv, swap_production_dates_for_time_delta, current_selection, decline_curve
-from tools import handle_numerical_variables, handle_dateTime_variables, handle_object_variables, plot_map, fit_decline_curve
+from tools import load_merge_header_and_production_csv, swap_production_dates_for_time_delta
+from tools import current_selection, decline_curve, handle_numerical_variables, handle_dateTime_variables
+from tools import handle_object_variables, plot_map, fit_decline_curve, add_BOE_per_day_column
 
 # set plot text size
 matplotlib.rcParams.update({'font.size': 12})
@@ -27,6 +28,7 @@ class Quick_TypeCurve_Analysis(object):
 
 	def __init__(self, headerCSV, productionCSV):
 		self.wellDF = load_merge_header_and_production_csv(headerCSV, productionCSV)
+		self.wellDF = add_BOE_per_day_column(self.wellDF)
 		self.userLocation = []
 
 	def subset_wells_by_distance(self):
@@ -176,9 +178,9 @@ class Quick_TypeCurve_Analysis(object):
 		# plot well data
 		fig, ax = plt.subplots(figsize = (15,8))
 		for API in set(self.wellDF['API/UWI']):
-			plotData = self.wellDF.loc[self.wellDF['API/UWI'] == API, ['Time Delta', 'Liquid (bbl)']]
+			plotData = self.wellDF.loc[self.wellDF['API/UWI'] == API, ['Time Delta', 'BOE per day']]
 			days = plotData['Time Delta'].dt.days
-			liquid = np.array(plotData['Liquid (bbl)'])
+			liquid = np.array(plotData['BOE per day'])
 			ax.semilogy(days, liquid, 'o-', label = API)
 
 		# add decline estimate
@@ -193,7 +195,7 @@ class Quick_TypeCurve_Analysis(object):
 
 		# add titles and legend
 		ax.set_xlabel('Time [Days]')
-		ax.set_ylabel('Rate\n[Liquid (bbl)]')
+		ax.set_ylabel('BOE per day\n[barrels of oil equivalent per day]')
 		ax.set_title('Decline Curve Parameters: qi=%.2f, b=%.4f, di=%.4f, r2=%.3f' %(qi, b, di, r2))
 		ax.legend(bbox_to_anchor=(1.28, 1.05))
 		
