@@ -303,35 +303,35 @@ def plot_map(latLongDF, userLocation = None):
 	map.drawmapboundary()
 
 	# add roads
-	# map.readshapefile('./data/tl_2010_48_prisecroads/tl_2010_48_prisecroads', 'Streets', drawbounds = False)
+	# map.readshapefile('../well_decline_curve_shapefiles/tl_2010_48_prisecroads/tl_2010_48_prisecroads', 'Streets', drawbounds = False)
 
 	# for shape in map.Streets:
 	# 	xx, yy, = zip(*shape)
 	# 	map.plot(xx, yy, linewidth = 1.5, color='green', alpha=.75) 
 
 	# add PB_block
-	map.readshapefile('./data/PB_County/PB_block', 'PB_block', drawbounds = False)
+	map.readshapefile('../well_decline_curve_shapefiles/PB_County/PB_block', 'PB_block', drawbounds = False)
 
 	for shape in map.PB_block:
 		xx, yy, = zip(*shape)
 		map.plot(xx, yy, linewidth = 1.5, color='black', alpha=.75) 
 
 	# add PB_County
-	map.readshapefile('./data/PB_County/PB_County', 'PB_County', drawbounds = False)
+	map.readshapefile('../well_decline_curve_shapefiles/PB_County/PB_County', 'PB_County', drawbounds = False)
 
 	for shape in map.PB_County:
 		xx, yy, = zip(*shape)
 		map.plot(xx, yy, linewidth = 1.5, color='gray', alpha=.75) 
 
 	# add PB_State
-	map.readshapefile('./data/PB_County/PB_County', 'PB_State', drawbounds = False)
+	map.readshapefile('../well_decline_curve_shapefiles/PB_County/PB_County', 'PB_State', drawbounds = False)
 
 	for shape in map.PB_State:
 		xx, yy, = zip(*shape)
 		map.plot(xx, yy, linewidth = 1.5, color='orange', alpha=.75) 
 
 	# add PB_survey
-	map.readshapefile('./data/PB_County/PB_County', 'PB_survey', drawbounds = False)
+	map.readshapefile('../well_decline_curve_shapefiles/PB_County/PB_County', 'PB_survey', drawbounds = False)
 
 	for shape in map.PB_survey:
 		xx, yy, = zip(*shape)

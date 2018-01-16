@@ -2,13 +2,13 @@
 ### ENVIRONMENT  
 **Python 2.7**  
 *Required Libraries*  
-*sys  
-*os  
-*numpy  
-*pandas  
-*matplotlib version 1.5.3
-*geopy  
-*mpl_toolkits.basemap  
+* sys  
+* os  
+* numpy  
+* pandas  
+* matplotlib version 1.5.3  
+* geopy  
+* mpl_toolkits.basemap  
   
 ## 0.0 Provide .csv of Well production data and .csv of well header data
 Examples in `./data` 
