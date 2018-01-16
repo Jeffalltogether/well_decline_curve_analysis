@@ -277,6 +277,7 @@ def plot_map(latLongDF, userLocation = None):
 	# https://stackoverflow.com/questions/23751635/good-python-toolkit-for-plotting-points-on-a-city-map
 	from mpl_toolkits.basemap import Basemap
 	import matplotlib.pyplot as plt
+	import matplotlib.patches as mpatches
 	import numpy as np
 
 	labels = latLongDF['API/UWI']
@@ -302,25 +303,66 @@ def plot_map(latLongDF, userLocation = None):
 	map.drawmapboundary()
 
 	# add roads
-	map.readshapefile('./data/tl_2010_48_prisecroads/tl_2010_48_prisecroads', 'Streets', drawbounds = False)
+	# map.readshapefile('./data/tl_2010_48_prisecroads/tl_2010_48_prisecroads', 'Streets', drawbounds = False)
 
-	for shape in map.Streets:
+	# for shape in map.Streets:
+	# 	xx, yy, = zip(*shape)
+	# 	map.plot(xx, yy, linewidth = 1.5, color='green', alpha=.75) 
+
+	# add PB_block
+	map.readshapefile('./data/PB_County/PB_block', 'PB_block', drawbounds = False)
+
+	for shape in map.PB_block:
+		xx, yy, = zip(*shape)
+		map.plot(xx, yy, linewidth = 1.5, color='black', alpha=.75) 
+
+	# add PB_County
+	map.readshapefile('./data/PB_County/PB_County', 'PB_County', drawbounds = False)
+
+	for shape in map.PB_County:
+		xx, yy, = zip(*shape)
+		map.plot(xx, yy, linewidth = 1.5, color='gray', alpha=.75) 
+
+	# add PB_State
+	map.readshapefile('./data/PB_County/PB_County', 'PB_State', drawbounds = False)
+
+	for shape in map.PB_State:
+		xx, yy, = zip(*shape)
+		map.plot(xx, yy, linewidth = 1.5, color='orange', alpha=.75) 
+
+	# add PB_survey
+	map.readshapefile('./data/PB_County/PB_County', 'PB_survey', drawbounds = False)
+
+	for shape in map.PB_survey:
 		xx, yy, = zip(*shape)
 		map.plot(xx, yy, linewidth = 1.5, color='green', alpha=.75) 
+
 
 	# add wells to map
 	for lab,lat,lon,prod in zip(labels, latitudes, longitudes, production):
 		x,y = map(lon, lat)
-		map.plot(x, y, 'bo', mfc='none', markersize=prod)
+		map.plot(x, y, 'o', markerfacecolor = 'none', markeredgecolor = 'blue', markersize=prod)
 		map.plot(x, y, 'bx', markersize=5)
+
+	# manually enter legend 
+	selectedWells = mpatches.Patch(color='blue', label='selected wells')
+	block = mpatches.Patch(color='black', label='block')
+	survey = mpatches.Patch(color='green', label='survey')
+	county = mpatches.Patch(color='gray', label='county')
+	
+	patches = [selectedWells, block, survey, county]
 
 	if userLocation:
 		x,y = map(userLocation[1], userLocation[0])
 		map.plot(x, y, 'ro', markersize=20, alpha=0.75)
-		map.plot(x, y, 'x', markersize=10)
+		map.plot(x, y, 'x', markersize=10, label = 'Selected Location')
+		myLocation = mpatches.Patch(color='red', label='my location\n lon: %.5f\n lat: %.5f' %(userLocation[1], userLocation[0]))
+		patches.append(myLocation)
 
-	# eliminate unnecessary white space
-	plt.tight_layout()
+
+	# organize legend and plot locations
+	plt.subplots_adjust(left=0.01, right=0.7, top=0.99, bottom=0.01)
+	plt.legend(handles=patches, bbox_to_anchor=(1.42, 1.0))
 
 	plt.savefig('./results/map.png')
 	plt.close()
