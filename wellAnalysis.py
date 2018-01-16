@@ -195,7 +195,7 @@ class Quick_TypeCurve_Analysis(object):
 
 		# add titles and legend
 		ax.set_xlabel('Time [Days]')
-		ax.set_ylabel('BOE per day\n[barrels of oil equivalent per day]')
+		ax.set_ylabel('BOE per Day\n[Barrels of Oil Equivalent per Day]')
 		ax.set_title('Decline Curve Parameters: qi=%.2f, b=%.4f, di=%.4f, r2=%.3f' %(qi, b, di, r2))
 		ax.legend(bbox_to_anchor=(1.28, 1.05))
 		
