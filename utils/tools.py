@@ -8,8 +8,8 @@ def load_merge_header_and_production_csv(headerCSV, productionCSV):
 
 	# convert all date column to datetime
 	for column in headerDF.columns.values:
-		if 'date' in column:
-				headerDF[column] = pd.to_datetime(headerDF[column])
+		if any(word in column for word in ['date','Date']):
+			headerDF[column] = pd.to_datetime(headerDF[column], errors='coerce')
 
 	# force certain columns to be float
 	floatColumns = ['BE Oil EUR', 'BE Oil EUR NORM 10kft', 'BE Oil Delta EUR', 'BE Oil Delta EUR Percent', 'BE Gas EUR',
