@@ -444,3 +444,10 @@ def fit_decline_curve(wellDF):
 
 	# return solution
 	return qi, b, di, coefficient_of_dermination
+
+def nominal_decline(qi, b, di):
+	import numpy as np
+
+	x = 365 #days
+	q_oneYear = qi*(1.0-b*di*x)**(-1.0/b)
+	return 100 * ((qi/q_oneYear)**b - 1.0) / (b * 12)

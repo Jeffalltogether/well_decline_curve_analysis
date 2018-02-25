@@ -13,7 +13,7 @@ from geopy.distance import vincenty
 # import tools and custom code
 from tools import load_merge_header_and_production_csv, swap_production_dates_for_time_delta
 from tools import current_selection, decline_curve, handle_numerical_variables, handle_dateTime_variables
-from tools import handle_object_variables, plot_map, fit_decline_curve, add_BOE_per_day_column
+from tools import handle_object_variables, plot_map, fit_decline_curve, add_BOE_per_day_column, nominal_decline
 
 # set plot text size
 matplotlib.rcParams.update({'font.size': 12})
@@ -166,6 +166,8 @@ class Quick_TypeCurve_Analysis(object):
 		# decline curve estiamged parameters
 		qi, b, di, r2 = fit_decline_curve(self.wellDF)
 
+		d_nominal = nominal_decline(qi, b, di)
+
 		# times to estimate for the plot in int(days)
 		time_0 = 0
 		time_n = np.timedelta64(self.wellDF['Time Delta'].max())
@@ -196,7 +198,7 @@ class Quick_TypeCurve_Analysis(object):
 		# add titles and legend
 		ax.set_xlabel('Time [Days]')
 		ax.set_ylabel('BOE per Day\n[Barrels of Oil Equivalent per Day]')
-		ax.set_title('Decline Curve Parameters: qi=%.2f, b=%.4f, di=%.4f, r2=%.3f' %(qi, b, di, r2))
+		ax.set_title('Decline Curve Parameters: qi=%.2f, b=%.4f, nominal decline rate=%.1f, r2=%.3f' %(qi, b, d_nominal, r2))
 		ax.legend(bbox_to_anchor=(1.28, 1.05))
 		
 		# Customize the major grid
@@ -239,7 +241,11 @@ class Quick_TypeCurve_Analysis(object):
 			# decline curve estiamged parameters
 			qi, b, di, r2 = fit_decline_curve(wellData)
 
-			declineFit.append([well, qi, b, di, r2])
+			# compute Nominal decline
+			d_nominal = nominal_decline(qi, b, di)
+
+			# add data to list for saving to excel
+			declineFit.append([wellData, qi, b, d_nominal, di, r2])
 
 			# times to estimate for the plot in int(days)
 			time_0 = 0
@@ -269,7 +275,7 @@ class Quick_TypeCurve_Analysis(object):
 			# add titles and legend
 			ax.set_xlabel('Time [Days]')
 			ax.set_ylabel('BOE per Day\n[Barrels of Oil Equivalent per Day]')
-			ax.set_title('Decline Curve Parameters: qi=%.2f, b=%.4f, di=%.4f, r2=%.3f' %(qi, b, di, r2))
+			ax.set_title('Decline Curve Parameters: qi=%.2f, b=%.4f, nominal decline rate=%.1f, r2=%.3f' %(qi, b, d_nominal, r2))
 			ax.legend(bbox_to_anchor=(1.28, 1.05))
 			
 			# Customize the major grid
@@ -285,7 +291,7 @@ class Quick_TypeCurve_Analysis(object):
 			plt.savefig('./results/' + str(well) + '_decline_estimate.png')
 			plt.close()	
 
-		declineFitDF = pd.DataFrame(declineFit, columns = ['API/UWI', 'qi', 'b', 'di', 'r2'])
+		declineFitDF = pd.DataFrame(declineFit, columns = ['API/UWI', 'qi', 'b', 'nominal decline rate', 'effective decline rate[di]', 'r2'])
 		declineFitDF.to_csv('./results/individual_well_decline_curves.csv')
 
 
