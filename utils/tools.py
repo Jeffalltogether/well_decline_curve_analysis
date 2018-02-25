@@ -421,8 +421,9 @@ def fit_decline_curve(wellDF):
 	y = np.array([y for t,y in smooth])
 
 	# compute decline curve
-	model = DeclineObj(x,y,[y.max(),3.5,-0.75], model="HYP")
+	model = DeclineObj(x,y,[y.max(),1.4,-0.75], model="HYP")
 	results = model(limits=[(0,y.max()*10.0),(1.0,4.0),(-0.99,-0.001)])
+	# results = model(limits = [[0,y.max()*10.0],[1.4,1.41],[-2.0,1.0]])
 	qi, b, di = model.parameters
 	
 	# compute goodness-of-fit parameter

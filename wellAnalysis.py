@@ -209,7 +209,7 @@ class Quick_TypeCurve_Analysis(object):
 		plt.subplots_adjust(left=0.07, right=0.8, top=0.9, bottom=0.1)
 
 		# save and display plot
-		plt.savefig('./results/decline_estimate.png')
+		plt.savefig('./results/Average_decline_estimate.png')
 		plt.close()
 
 	def map_selected_wells(self):
@@ -226,6 +226,67 @@ class Quick_TypeCurve_Analysis(object):
 		print 'saving selected wells to .csv'		
 		self.wellDF.to_csv('./results/selected_wells.csv')
 
+	def plot_individual_wells_and_type_curves(self):
+		print '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
+		# get time dela column from seleccted wells
+		self.wellDF = swap_production_dates_for_time_delta(self.wellDF)
+		declineFit = []
+
+		for well in np.unique(self.wellDF['API/UWI']):
+			print 'fitting well # %s' %(str(well))
+			wellData = self.wellDF[self.wellDF['API/UWI'] == well]
+
+			# decline curve estiamged parameters
+			qi, b, di, r2 = fit_decline_curve(wellData)
+
+			declineFit.append([well, qi, b, di, r2])
+
+			# times to estimate for the plot in int(days)
+			time_0 = 0
+			time_n = np.timedelta64(wellData['Time Delta'].max())
+			decline_t = np.arange(time_0, time_n, np.timedelta64(10,'D'))
+			decline_t = (decline_t / np.timedelta64(1, 'D')).astype(int)
+
+			# estimated decline curve
+			decline_y = decline_curve(decline_t, qi, b, di)
+
+			# plot well data
+			fig, ax = plt.subplots(figsize = (15,8))
+			days = wellData['Time Delta'].dt.days
+			liquid = np.array(wellData['BOE per day'])
+			ax.semilogy(days, liquid, 'o-', label = well)
+
+			# add decline estimate
+			ax.plot(decline_t, decline_y, '-', color='black', linewidth=5.0, label = 'Estimated Decline')
+			
+			# set axis limits
+			xmin = (wellData['Time Delta'].min() / np.timedelta64(1, 'D')).astype(int)
+			xmin = xmin*0.15
+			xmax = (wellData['Time Delta'].max() / np.timedelta64(1, 'D')).astype(int)
+			xmax = xmax*1.06
+			ax.set_xlim([xmin, xmax])
+
+			# add titles and legend
+			ax.set_xlabel('Time [Days]')
+			ax.set_ylabel('BOE per Day\n[Barrels of Oil Equivalent per Day]')
+			ax.set_title('Decline Curve Parameters: qi=%.2f, b=%.4f, di=%.4f, r2=%.3f' %(qi, b, di, r2))
+			ax.legend(bbox_to_anchor=(1.28, 1.05))
+			
+			# Customize the major grid
+			ax.grid(which='major', linestyle='-', linewidth='0.5', color='grey')
+
+			# Customize the minor grid
+			ax.grid(which='minor', linestyle=':', linewidth='0.5', color='grey')
+
+			# eliminate unnecessary white space
+			plt.subplots_adjust(left=0.07, right=0.8, top=0.9, bottom=0.1)
+
+			# save and display plot
+			plt.savefig('./results/' + str(well) + '_decline_estimate.png')
+			plt.close()	
+
+		declineFitDF = pd.DataFrame(declineFit, columns = ['API/UWI', 'qi', 'b', 'di', 'r2'])
+		declineFitDF.to_csv('./results/individual_well_decline_curves.csv')
 
 
 if __name__ == '__main__':
@@ -279,3 +340,6 @@ if __name__ == '__main__':
 
 	# save csv
 	analysis.save_selected_data()	
+
+	#plot wells individually
+	analysis.plot_individual_wells_and_type_curves()
