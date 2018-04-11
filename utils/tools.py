@@ -12,9 +12,14 @@ def load_merge_header_and_production_csv(headerCSV, productionCSV):
 			headerDF[column] = pd.to_datetime(headerDF[column], errors='coerce')
 
 	# force certain columns to be float
-	floatColumns = ['BE Oil EUR', 'BE Oil EUR NORM 10kft', 'BE Oil Delta EUR', 'BE Oil Delta EUR Percent', 'BE Gas EUR',
-					'BE Oil GAS NORM 10kft', 'BE Gas Delta EUR', 'BE Gas Delta EUR Percent', 'BE B-Factor', 'BE Initial Rate',
-					'BE Final Rate', 'BE Initial Decline', 'BE Oil RRR', 'BE Gas RRR', 'Perforated Interval Length']
+	floatColumns = ['BE Oil EUR', 'BE Oil EUR NORM 10kft', 
+					'BE Oil Delta EUR', 'BE Oil Delta EUR Percent', 
+					'BE Gas EUR', 'BE Oil GAS NORM 10kft', 
+					'BE Gas Delta EUR', 'BE Gas Delta EUR Percent', 
+					'BE B-Factor', 'BE Initial Rate',
+					'BE Final Rate', 'BE Initial Decline', 
+					'BE Oil RRR', 'BE Gas RRR', 
+					'Perforated Interval Length']
 
 	for column in headerDF.columns.values:
 		if column in floatColumns:
@@ -146,7 +151,7 @@ def handle_numerical_variables(dataFrame, colName):
 				else:
 					break		
 		# subset wells
-		dataFrame= dataFrame.loc[(dataFrame[colName] >= float(Limits[0])) & (dataFrame[colName] >= float(Limits[1]))]
+		dataFrame= dataFrame.loc[(dataFrame[colName] >= float(Limits[0])) & (dataFrame[colName] <= float(Limits[1]))]
 
 	return dataFrame
 
@@ -373,7 +378,7 @@ def decline_curve(t, qi, b, di):
 	# unit of t is in days
 	return qi*(1.0-b*di*t)**(-1.0/b)
 
-def fit_decline_curve(wellDF):
+def fit_decline_curve(wellDF, fixed_b_factor = None):
 	import numpy as np
 	from sklearn.metrics import r2_score
 	from decline import DeclineObj
@@ -422,8 +427,14 @@ def fit_decline_curve(wellDF):
 
 	# compute decline curve
 	model = DeclineObj(x,y,[y.max(),1.4,-0.75], model="HYP")
-	results = model(limits=[(0,y.max()*10.0),(1.0,4.0),(-0.99,-0.001)])
-	# results = model(limits = [[0,y.max()*10.0],[1.4,1.41],[-2.0,1.0]])
+
+	if fixed_b_factor == None:
+		results = model(limits=[(0,y.max()*10.0),(1.0,4.0),(-0.99,-0.001)])
+	
+	else:
+		fixed_b = float(fixed_b_factor)
+		results = model(limits = [(0,y.max()*10.0),(fixed_b,fixed_b),(-0.99,-0.001)])
+	
 	qi, b, di = model.parameters
 	
 	# compute goodness-of-fit parameter

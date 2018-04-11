@@ -3,7 +3,7 @@
 ### Boiler-plate imports and code
 import sys
 sys.path.append('./utils/')
-import os 
+import os, math
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -15,8 +15,83 @@ from tools import load_merge_header_and_production_csv, swap_production_dates_fo
 from tools import current_selection, decline_curve, handle_numerical_variables, handle_dateTime_variables
 from tools import handle_object_variables, plot_map, fit_decline_curve, add_BOE_per_day_column, nominal_decline
 
-# set plot text size
-matplotlib.rcParams.update({'font.size': 12})
+def main(headerCSV, productionCSV):
+	analysis = Quick_TypeCurve_Analysis(headerCSV, productionCSV)
+	print '\n********************************************************************************'
+	print '*                                                                              *'	
+	print '*                       Well Type Curve Analysis                               *'
+	print '*                                                                              *'
+	print '* Quit this program anytime by pressing `ctrl+C`                               *\n'
+	print 'reading well header data from: %s' %headerCSV
+	print 'reading production data from: %s' %productionCSV
+
+	# select by well number
+	print '\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'
+	wellByName = raw_input ('would you like to select individual wells by API-UWI number? [y/n]: ')
+	# check user input
+	while wellByName not in ('y', 'n', 'Y', 'N'):
+		wellByName = raw_input('please try again [y/n]?  ')
+
+	if wellByName == 'y' or wellByName == 'Y':
+		analysis.subset_by_well_name()
+
+
+	# select nearby wells with a circular radius
+	print '\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'
+	wellByName = raw_input ('would you like to select wells near a GPS location? [y/n]: ')
+	# check user input
+	while wellByName not in ('y', 'n', 'Y', 'N'):
+		wellByName = raw_input('please try again [y/n]?  ')
+
+	if wellByName == 'y' or wellByName == 'Y':
+		analysis.subset_wells_by_distance()
+
+
+	# select by variable ranges
+	print '\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'
+	wellByVariable = raw_input ('would you like to subset wells by column values? [y/n]: ')
+	# check user input
+	while wellByVariable not in ('y', 'n', 'Y', 'N'):
+		wellByVariable = raw_input('please try again [y/n]?  ')
+
+	if wellByVariable == 'y' or wellByVariable == 'Y':
+		analysis.subset_well_by_variable()
+
+
+	# plot type curve for all selected wells
+	print '\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'
+	b_value = None
+	# determine if user wants to pre-specify any of the decline curve aprameters
+	fixed_b = raw_input ('would you like to pre-specify the decline curve b-factor? [y/n]: ')
+	# check user input
+	while fixed_b not in ('y', 'n', 'Y', 'N'):
+		fixed_b = raw_input('please try again [y/n]?  ')
+
+	if fixed_b.upper() == 'Y':
+		while True:
+			try:
+				b_value = float(raw_input('Enter value for b-factor: '))
+			except ValueError:
+				print 'Please enter a number'
+				continue
+			else:
+				break	
+
+	analysis.generate_type_curve(b_value)
+
+	# plot map
+	print '\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'
+	analysis.map_selected_wells()
+
+	# save csv
+	print '\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'
+	analysis.save_selected_data()	
+
+	# plot wells individually
+	print '\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'
+	analysis.plot_individual_wells_and_type_curves()
+
+	return
 
 class Quick_TypeCurve_Analysis(object):
 	'''
@@ -32,7 +107,6 @@ class Quick_TypeCurve_Analysis(object):
 		self.userLocation = []
 
 	def subset_wells_by_distance(self):
-		print '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
 		# obtain longitude and latitudes from user
 		while  len(self.userLocation) != 2:
 			while True:
@@ -69,10 +143,11 @@ class Quick_TypeCurve_Analysis(object):
 		# notify user of changes to current selection
 		print '%i wells selected' %(len(set(self.wellDF['API/UWI'])))
 
+		return
+
 	def subset_by_well_name(self):
 		allWells = list(set(self.wellDF['API/UWI']))
 
-		print '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
 		print '\nSelect one or more of the followig wells by API/UWI number\n'
 		print 'all wells available...'
 		for i,well in enumerate(allWells):
@@ -87,6 +162,8 @@ class Quick_TypeCurve_Analysis(object):
 
 		# notify user of changes to current selection
 		print '%i wells selected' %(len(set(self.wellDF['API/UWI'])))
+
+		return
 
 	def subset_well_by_variable(self):
 		allVariables = self.wellDF.columns.values
@@ -135,36 +212,14 @@ class Quick_TypeCurve_Analysis(object):
 		# notify user of changes to current selection
 		print '%i wells selected' %(len(set(self.wellDF['API/UWI'])))
 
-	def plot_decline_curves(self):
-		# get time dela column from seleccted wells
-		self.wellDF = swap_production_dates_for_time_delta(self.wellDF)
-		
-		plotDF = self.wellDF[['Time Delta', 'Liquid (bbl)']]
+		return
 
-		# plot well data
-		fig, ax = plt.subplots(figsize = (12,8))
-		for API in set(self.wellDF['API/UWI']):
-			plotData = self.wellDF.loc[self.wellDF['API/UWI'] == API, ['Time Delta', 'Liquid (bbl)']]
-			days = plotData['Time Delta'].dt.days
-			liquid = np.array(plotData['Liquid (bbl)'])
-			ax.semilogy(days, liquid, 'o-', label = API)
-
-		# add titles and legend
-		ax.set_xlabel('Time [Days]')
-		ax.set_ylabel('Rate\n[Liquid (bbl)]')
-		plt.legend()
-
-		# save and display plot
-		plt.savefig('./results/production_data.png')
-		plt.close()
-
-	def generate_type_curve(self):
-		print '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
+	def generate_type_curve(self, b_value = None):
 		# get time dela column from seleccted wells
 		self.wellDF = swap_production_dates_for_time_delta(self.wellDF)
 
 		# decline curve estiamged parameters
-		qi, b, di, r2 = fit_decline_curve(self.wellDF)
+		qi, b, di, r2 = fit_decline_curve(self.wellDF, fixed_b_factor = b_value)
 
 		d_nominal = nominal_decline(qi, b, di)
 
@@ -183,7 +238,7 @@ class Quick_TypeCurve_Analysis(object):
 			plotData = self.wellDF.loc[self.wellDF['API/UWI'] == API, ['Time Delta', 'BOE per day']]
 			days = plotData['Time Delta'].dt.days
 			liquid = np.array(plotData['BOE per day'])
-			ax.semilogy(days, liquid, 'o-', label = API)
+			ax.semilogy(days, liquid, '-', label = API)
 
 		# add decline estimate
 		ax.plot(decline_t, decline_y, '-', color='black', linewidth=5.0, label = 'Estimated Decline')
@@ -199,7 +254,9 @@ class Quick_TypeCurve_Analysis(object):
 		ax.set_xlabel('Time [Days]')
 		ax.set_ylabel('BOE per Day\n[Barrels of Oil Equivalent per Day]')
 		ax.set_title('Decline Curve Parameters: qi=%.2f, b=%.4f, nominal decline rate=%.1f, r2=%.3f' %(qi, b, d_nominal, r2))
-		ax.legend(bbox_to_anchor=(1.28, 1.05))
+		num_col = math.ceil(len(set(self.wellDF['API/UWI']))/40.0) # number of columns to put in legend
+		num_col = int(num_col)
+		ax.legend(bbox_to_anchor=(1.26, 0.9), ncol = num_col, fontsize = 9-num_col, labelspacing=0.2)
 		
 		# Customize the major grid
 		ax.grid(which='major', linestyle='-', linewidth='0.5', color='grey')
@@ -214,8 +271,9 @@ class Quick_TypeCurve_Analysis(object):
 		plt.savefig('./results/Average_decline_estimate.png')
 		plt.close()
 
+		return
+
 	def map_selected_wells(self):
-		print '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
 		print 'generating map, this may take a minute...'
 		# send data to mapping function
 		if not(self.userLocation):
@@ -223,13 +281,15 @@ class Quick_TypeCurve_Analysis(object):
 		else:
 			plot_map(self.wellDF, self.userLocation)
 
+		return
+
 	def save_selected_data(self):
-		print '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
 		print 'saving selected wells to .csv'		
 		self.wellDF.to_csv('./results/selected_wells.csv')
+		return
 
 	def plot_individual_wells_and_type_curves(self):
-		print '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
+		print 'generating plots for all selected wells'
 		# get time dela column from seleccted wells
 		self.wellDF = swap_production_dates_for_time_delta(self.wellDF)
 		declineFit = []
@@ -294,58 +354,11 @@ class Quick_TypeCurve_Analysis(object):
 		declineFitDF = pd.DataFrame(declineFit, columns = ['API/UWI', 'qi', 'b', 'nominal decline rate', 'effective decline rate[di]', 'r2'])
 		declineFitDF.to_csv('./results/individual_well_decline_curves.csv')
 
+		return
 
 if __name__ == '__main__':
 	### well data files
 	headerCSV = './data/Well_header_data.csv'
 	productionCSV = './data/Production_Time_Series.CSV'
 
-	analysis = Quick_TypeCurve_Analysis(headerCSV, productionCSV)
-
-	# select by well number
-	wellByName = raw_input ('would you like to select individual wells by API-UWI number? [y/n]: ')
-	# check user input
-	while wellByName not in ('y', 'n', 'Y', 'N'):
-		wellByName = raw_input('please try again [y/n]?  ')
-
-	if wellByName == 'y' or wellByName == 'Y':
-		analysis.subset_by_well_name()
-
-
-	# select nearby wells with a circular radius
-	wellByName = raw_input ('would you like to select wells near a GPS location? [y/n]: ')
-	# check user input
-	while wellByName not in ('y', 'n', 'Y', 'N'):
-		wellByName = raw_input('please try again [y/n]?  ')
-
-	if wellByName == 'y' or wellByName == 'Y':
-		analysis.subset_wells_by_distance()
-
-
-	# select by variable ranges
-	wellByVariable = raw_input ('would you like to subset wells by column values? [y/n]: ')
-	# check user input
-	while wellByVariable not in ('y', 'n', 'Y', 'N'):
-		wellByVariable = raw_input('please try again [y/n]?  ')
-
-	if wellByVariable == 'y' or wellByVariable == 'Y':
-		analysis.subset_well_by_variable()
-
-
-	# plot raw decline curves
-	# analysis.plot_decline_curves()
-
-
-	# plot type curve and raw decline curves
-	analysis.generate_type_curve()
-
-
-	# plot map
-	analysis.map_selected_wells()
-
-
-	# save csv
-	analysis.save_selected_data()	
-
-	#plot wells individually
-	analysis.plot_individual_wells_and_type_curves()
+	main(headerCSV, productionCSV)

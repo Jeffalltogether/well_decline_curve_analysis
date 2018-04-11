@@ -367,7 +367,7 @@ class DeclineObj:
             Foundation, web page URL http://www.python.org/.
 
     """
-    def __init__(self,x,y,guess=None,model=None):
+    def __init__(self, x, y, guess=None, model=None):
         """Initialize instance and check input"""
         self.x = x
         self.y = y
@@ -457,7 +457,7 @@ class DeclineObj:
             limits = None
         if limits == None:
             # set default bounds
-            limits = [(0,y.max()*5.0),(MIN_b,MAX_b),(MIN_di,1.0)]
+            limits = [(0,y.max()*5.0), (MIN_b,MAX_b), (MIN_di,1.0)]
         # do the hyperbolic decline
         hyp_parameters, nfeval, hyp_success = fmin_tnc(hyperr_TNC,
             self.guess, args=(y, x), fprime=None, bounds=limits,
