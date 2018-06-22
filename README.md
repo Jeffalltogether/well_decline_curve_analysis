@@ -12,9 +12,9 @@
   
 ## 0.0 Provide .csv of Well production data and .csv of well header data
 Examples in `./data` 
-prepare data by:
-1 - delete all commas from the cvs files
-
+prepare data by deleting all the commas from the values in the 'Well production data' and 'well header data' files
+This can be done easily in excel with find-and-replace.  
+  
 ## 1.0 Select wells based on critieria available in well data  
 Follow the prompts after starting program  
   
@@ -25,7 +25,13 @@ Based on https://www.uky.edu/KGS/emsweb/devsh/production/decline_obj.py
 Results are saved to `./results`  
 
 ## 4.0 Plot map of wells used in type curve  
-Results are saved to `./results`  
+NOTE: this function will only work if shapefiles are provided in a folder located at '../well_decline_curve_shapefiles/\*'  
+The shapefiles used in this function are:  
+1. map.readshapefile('../well_decline_curve_shapefiles/PB_County/PB_County', 'PB_County', drawbounds = False)  
+2. map.readshapefile('../well_decline_curve_shapefiles/PB_County/PB_County', 'PB_State', drawbounds = False)  
+3. map.readshapefile('../well_decline_curve_shapefiles/PB_County/PB_County', 'PB_survey', drawbounds = False)  
+
+Mapping results are saved to `./results`  
 
 
 Open Stories:
