@@ -1,4 +1,8 @@
 # Well decline curve analysis  
+This program reads well header data and production logs (e.g. exported from Drilling Info as .csv files) and
+walks the user through the genreation of decline curves for each well provided in the input data. Decine curves
+are fit with a the hyperbolic curve that is estimated using an iterative least squares method.  
+
 ### ENVIRONMENT  
 **Python 2.7**  
 *Required Libraries*  
